@@ -1,11 +1,17 @@
+import certifi
 from pymongo import AsyncMongoClient
 
 from anony import logger
 from config import MONGO_URI
 
+
 class Database:
     def __init__(self):
-        self.mongo = AsyncMongoClient(MONGO_URI, serverSelectionTimeoutMS=12500)
+        self.mongo = AsyncMongoClient(
+            MONGO_URI,
+            serverSelectionTimeoutMS=12500,
+            tlsCAFile=certifi.where(),
+        )
         self.users = self.mongo.StringGen.users
 
     async def connect(self) -> None:
@@ -19,7 +25,6 @@ class Database:
         await self.mongo.close()
         logger.info("Database connection closed.")
 
-
     async def is_user(self, user_id: int):
         return await self.users.find_one({"user_id": user_id})
 
@@ -29,3 +34,4 @@ class Database:
 
     async def get_users(self) -> list:
         return [doc["user_id"] async for doc in self.users.find()]
+        
