@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 # Telegram Clients
-from pyrogram import Client
+from pyrogram import Client, types as pyro_types
 from pyrogram.errors import (
     SessionPasswordNeeded as PyroSessionPass,
     PhoneCodeInvalid as PyroCodeInvalid,
@@ -23,17 +23,17 @@ from telethon.errors import (
     PasswordHashInvalidError as TelePassInvalid,
 )
 from telethon.sessions import StringSession
+from telethon.tl.functions.channels import JoinChannelRequest
+
+from config import SUPPORT_CHAT
 
 app_web = FastAPI(title="StringGen Bot Web Server")
 
-# In-memory storage for pending client sessions
 SESSION_STORAGE: Dict[str, Dict[str, Any]] = {}
 
-# Locate StringGen/static folder dynamically
-CURRENT_DIR = Path(__file__).resolve().parent  # /app/anony
-PROJECT_ROOT = CURRENT_DIR.parent              # /app
+CURRENT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = CURRENT_DIR.parent
 
-# Check possible locations for StringGen/static or static
 CANDIDATE_PATHS = [
     PROJECT_ROOT / "StringGen" / "static",
     PROJECT_ROOT / "static",
@@ -49,8 +49,40 @@ for path in CANDIDATE_PATHS:
 if STATIC_DIR and STATIC_DIR.exists():
     app_web.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
+MSG_TEMPLATE = (
+    "Here is your {lib} session:\n\n"
+    "<code>{session}</code>\n\n"
+    "A session generator bot by <a href='{support}'>Fallen Association</a>\n"
+    "☠ <b>Note:</b> Don't share this session with anyone."
+)
 
-# --- Request Models ---
+
+async def send_to_saved_messages(client, lib: str, session_str: str) -> None:
+    """Sends session string directly to user's Telegram Saved Messages."""
+    text = MSG_TEMPLATE.format(lib=lib.capitalize(), session=session_str, support=SUPPORT_CHAT)
+    if lib == "pyrogram":
+        await client.send_message(
+            "me",
+            text,
+            link_preview_options=pyro_types.LinkPreviewOptions(is_disabled=True),
+        )
+        try:
+            await client.join_chat("fallenx")
+        except Exception:
+            pass
+    elif lib == "telethon":
+        await client.send_message(
+            "me",
+            text,
+            link_preview=False,
+            parse_mode="html",
+        )
+        try:
+            await client(JoinChannelRequest("@fallenx"))
+        except Exception:
+            pass
+
+
 class SendOtpRequest(BaseModel):
     lib_type: str
     api_id: int
@@ -69,7 +101,6 @@ class Verify2faRequest(BaseModel):
     password: str
 
 
-# --- Web Routes ---
 @app_web.get("/")
 async def serve_index():
     if STATIC_DIR:
@@ -77,7 +108,7 @@ async def serve_index():
         if index_file.exists():
             return FileResponse(str(index_file))
     return JSONResponse(
-        content={"status": "error", "message": "StringGen/static/index.html not found"},
+        content={"status": "error", "message": "index.html not found"},
         status_code=404,
     )
 
@@ -87,7 +118,6 @@ async def health_check():
     return {"status": "ok", "service": "running"}
 
 
-# --- API Routes for Mini App ---
 @app_web.post("/api/send-otp")
 async def send_otp(data: SendOtpRequest):
     phone = data.phone_number.strip().replace(" ", "")
@@ -103,7 +133,6 @@ async def send_otp(data: SendOtpRequest):
             )
             await client.connect()
             sent_code = await client.send_code(phone)
-            
             SESSION_STORAGE[phone] = {
                 "lib": "pyrogram",
                 "client": client,
@@ -115,7 +144,6 @@ async def send_otp(data: SendOtpRequest):
             client = TelegramClient(StringSession(), data.api_id, data.api_hash)
             await client.connect()
             sent_code = await client.send_code_request(phone)
-
             SESSION_STORAGE[phone] = {
                 "lib": "telethon",
                 "client": client,
@@ -136,7 +164,7 @@ async def verify_otp(data: VerifyOtpRequest):
     stored = SESSION_STORAGE.get(phone)
 
     if not stored:
-        raise HTTPException(status_code=400, detail="Session expired or not initialized. Please re-send OTP.")
+        raise HTTPException(status_code=400, detail="Session expired. Please start over.")
 
     lib = stored["lib"]
     client = stored["client"]
@@ -150,9 +178,10 @@ async def verify_otp(data: VerifyOtpRequest):
                     phone_code=data.otp,
                 )
                 session_str = await client.export_session_string()
+                await send_to_saved_messages(client, lib, session_str)
                 await client.disconnect()
                 SESSION_STORAGE.pop(phone, None)
-                return {"status": "success", "session": session_str}
+                return {"status": "success"}
             except PyroSessionPass:
                 return {"status": "2fa_required"}
             except (PyroCodeInvalid, PyroCodeExpired) as e:
@@ -166,9 +195,10 @@ async def verify_otp(data: VerifyOtpRequest):
                     phone_code_hash=data.phone_code_hash,
                 )
                 session_str = client.session.save()
+                await send_to_saved_messages(client, lib, session_str)
                 await client.disconnect()
                 SESSION_STORAGE.pop(phone, None)
-                return {"status": "success", "session": session_str}
+                return {"status": "success"}
             except TeleSessionPass:
                 return {"status": "2fa_required"}
             except (TeleCodeInvalid, TeleCodeExpired) as e:
@@ -196,9 +226,10 @@ async def verify_2fa(data: Verify2faRequest):
             try:
                 await client.check_password(password=data.password)
                 session_str = await client.export_session_string()
+                await send_to_saved_messages(client, lib, session_str)
                 await client.disconnect()
                 SESSION_STORAGE.pop(phone, None)
-                return {"status": "success", "session": session_str}
+                return {"status": "success"}
             except PyroPassInvalid:
                 raise HTTPException(status_code=400, detail="Invalid 2FA password")
 
@@ -206,9 +237,10 @@ async def verify_2fa(data: Verify2faRequest):
             try:
                 await client.sign_in(password=data.password)
                 session_str = client.session.save()
+                await send_to_saved_messages(client, lib, session_str)
                 await client.disconnect()
                 SESSION_STORAGE.pop(phone, None)
-                return {"status": "success", "session": session_str}
+                return {"status": "success"}
             except TelePassInvalid:
                 raise HTTPException(status_code=400, detail="Invalid 2FA password")
 
