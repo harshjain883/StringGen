@@ -3,9 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Telegram Mini App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Tailwind CSS (Fixed Link) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <title>String Gen Mini App</title>
     <style>
@@ -17,7 +15,7 @@
             background-color: var(--tg-theme-button-color, #3b82f6); 
             color: var(--tg-theme-button-text-color, #ffffff); 
         }
-        input, select, textarea {
+        input, select {
             color: #ffffff !important;
         }
     </style>
@@ -52,11 +50,21 @@
             <button id="btn-verify-2fa" onclick="verify2fa()" class="w-full p-3 btn-primary rounded font-bold transition duration-200 hover:opacity-90">Submit Password</button>
         </div>
 
-        <!-- Step 4: Result -->
-        <div id="step4" class="hidden space-y-4">
-            <p class="text-sm text-green-400 font-medium">Session Generated Successfully! Keep it safe.</p>
-            <textarea id="result" readonly class="w-full h-48 p-3 rounded bg-slate-900 border border-slate-700 text-xs font-mono"></textarea>
-            <button onclick="copySession()" class="w-full p-3 bg-emerald-600 hover:bg-emerald-500 rounded font-bold text-white transition duration-200">Copy Session</button>
+        <!-- Step 4: Success Message -->
+        <div id="step4" class="hidden space-y-5 text-center">
+            <div class="p-6 bg-slate-800 border border-slate-700 rounded-xl space-y-3">
+                <div class="text-4xl">🎉</div>
+                <h2 class="text-lg font-bold text-emerald-400">Session Generated Successfully!</h2>
+                <p class="text-sm text-slate-300">
+                    Aapka session string seedha aapke <b>Saved Messages</b> mein bhej diya gaya hai.
+                </p>
+                <p class="text-xs text-slate-400">
+                    Kripya apna Saved Messages chat check karein.
+                </p>
+            </div>
+            <button onclick="closeApp()" class="w-full p-3 bg-slate-700 hover:bg-slate-600 rounded font-bold text-white transition duration-200">
+                Close Mini App
+            </button>
         </div>
     </div>
 
@@ -106,7 +114,7 @@
                     phoneHash = data.phone_code_hash;
                     showStep(2);
                 } else {
-                    notify(data.detail || "Failed to send code.");
+                    notify(data.detail || "Failed to send OTP.");
                 }
             } catch (err) {
                 notify("Network error: " + err.message);
@@ -141,7 +149,7 @@
                 if (data.status === "2fa_required") {
                     showStep(3);
                 } else if (data.status === "success") {
-                    finish(data.session);
+                    showStep(4);
                 } else {
                     notify(data.detail || "Verification failed.");
                 }
@@ -175,7 +183,7 @@
                 });
                 const data = await res.json();
                 if (data.status === "success") {
-                    finish(data.session);
+                    showStep(4);
                 } else {
                     notify(data.detail || "Invalid password.");
                 }
@@ -192,21 +200,12 @@
             document.getElementById(`step${s}`).classList.remove('hidden');
         }
 
-        function finish(session) {
-            document.getElementById('result').value = session;
-            showStep(4);
-        }
-
-        function copySession() {
-            const copyText = document.getElementById("result");
-            copyText.select();
-            copyText.setSelectionRange(0, 99999);
-            navigator.clipboard.writeText(copyText.value).then(() => {
-                notify("Session copied to clipboard!");
-            }).catch(() => {
-                document.execCommand("copy");
-                notify("Session copied to clipboard!");
-            });
+        function closeApp() {
+            if (tg && tg.close) {
+                tg.close();
+            } else {
+                window.close();
+            }
         }
     </script>
 </body>
