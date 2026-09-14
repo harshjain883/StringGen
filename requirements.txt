@@ -11,5 +11,6 @@ pytgcrypto~=1.2.12
 dnspython>=2.6.0
 certifi>=2024.7.4
 
-# Web Server (Required for anony/__main__.py)
+# Web Server & Framework
 uvicorn>=0.30.0
+fastapi>=0.110.0
