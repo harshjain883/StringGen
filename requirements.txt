@@ -1,11 +1,12 @@
-fastapi
-uvicorn
-python-multipart
-jinja2
-# Existing dependencies
+# Session Generator Bot Requirements
 kurigram>=2.2.25
-telethon~=1.44.0
-pymongo~=4.17.0
+pymongo[srv]~=4.17.0
 python-dotenv~=1.2.3
+telethon~=1.44.0
+
+# Telegram MTProto Cryptography Acceleration
 pytgcrypto~=1.2.12
 
+# MongoDB Connection & TLS/SSL Validation
+dnspython>=2.6.0
+certifi>=2024.7.4
