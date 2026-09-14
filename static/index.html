@@ -2,70 +2,223 @@
 <html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>sᴛꝛɪɴɢ ғᴧᴛʜᴇꝛ ʙᴏᴛ</title>
+    
+    <!-- Telegram Mini App Script -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- Tailwind CSS & Lucide Icons -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <title>String Gen Mini App</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
     <style>
-        body { 
-            background-color: var(--tg-theme-bg-color, #0f172a); 
-            color: var(--tg-theme-text-color, #f8fafc); 
+        * {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
-        .btn-primary { 
-            background-color: var(--tg-theme-button-color, #3b82f6); 
-            color: var(--tg-theme-button-text-color, #ffffff); 
+        body {
+            background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #090d16 100%);
+            min-height: 100vh;
+            color: #f8fafc;
         }
-        input, select {
-            color: #ffffff !important;
+        /* Glassmorphism Effect */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+        }
+        .glass-input {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.25s ease;
+        }
+        .glass-input:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+            background: rgba(15, 23, 42, 0.85);
+        }
+        /* Gradient Button */
+        .btn-gradient {
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.4);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-gradient:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 30px -5px rgba(99, 102, 241, 0.6);
+        }
+        .btn-gradient:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+        /* Ambient Glow */
+        .glow-orb {
+            position: absolute;
+            width: 250px;
+            height: 250px;
+            background: radial-gradient(circle, rgba(99,102,241,0.2) 0%, rgba(0,0,0,0) 70%);
+            filter: blur(40px);
+            z-index: 0;
+            pointer-events: none;
         }
     </style>
 </head>
-<body class="p-6 font-sans antialiased">
-    <div id="app" class="max-w-md mx-auto space-y-6">
-        <h1 class="text-2xl font-bold text-center tracking-wide">Session Generator</h1>
+<body class="p-4 sm:p-6 flex flex-col justify-center items-center relative overflow-x-hidden">
 
-        <!-- Step 1: Init -->
-        <div id="step1" class="space-y-4">
-            <select id="lib_type" class="w-full p-3 rounded bg-slate-800 border border-slate-700 outline-none">
-                <option value="pyrogram">Pyrogram v2</option>
-                <option value="telethon">Telethon</option>
-            </select>
-            <input id="api_id" type="number" placeholder="API ID (e.g. 1234567)" class="w-full p-3 rounded bg-slate-800 border border-slate-700 outline-none">
-            <input id="api_hash" type="text" placeholder="API HASH" class="w-full p-3 rounded bg-slate-800 border border-slate-700 outline-none">
-            <input id="phone" type="text" placeholder="Phone Number (+1234567890)" class="w-full p-3 rounded bg-slate-800 border border-slate-700 outline-none">
-            <button id="btn-send-otp" onclick="sendOtp()" class="w-full p-3 btn-primary rounded font-bold transition duration-200 hover:opacity-90">Send OTP</button>
-        </div>
+    <!-- Background Ambience Orbs -->
+    <div class="glow-orb -top-20 -left-20"></div>
+    <div class="glow-orb top-1/2 -right-20"></div>
 
-        <!-- Step 2: OTP -->
-        <div id="step2" class="hidden space-y-4">
-            <p class="text-sm text-slate-400">Enter the login code sent to your Telegram account</p>
-            <input id="otp" type="text" placeholder="OTP (e.g. 1 2 3 4 5)" class="w-full p-3 rounded bg-slate-800 border border-slate-700 outline-none">
-            <button id="btn-verify-otp" onclick="verifyOtp()" class="w-full p-3 btn-primary rounded font-bold transition duration-200 hover:opacity-90">Verify OTP</button>
-        </div>
-
-        <!-- Step 3: 2FA -->
-        <div id="step3" class="hidden space-y-4">
-            <p class="text-sm text-amber-400 font-medium">Two-Step Verification (2FA) is enabled on this account</p>
-            <input id="password" type="password" placeholder="Cloud Password" class="w-full p-3 rounded bg-slate-800 border border-slate-700 outline-none">
-            <button id="btn-verify-2fa" onclick="verify2fa()" class="w-full p-3 btn-primary rounded font-bold transition duration-200 hover:opacity-90">Submit Password</button>
-        </div>
-
-        <!-- Step 4: Success Message -->
-        <div id="step4" class="hidden space-y-5 text-center">
-            <div class="p-6 bg-slate-800 border border-slate-700 rounded-xl space-y-3">
-                <div class="text-4xl">🎉</div>
-                <h2 class="text-lg font-bold text-emerald-400">Session Generated Successfully!</h2>
-                <p class="text-sm text-slate-300">
-                    Aapka session string seedha aapke <b>Saved Messages</b> mein bhej diya gaya hai.
-                </p>
-                <p class="text-xs text-slate-400">
-                    Kripya apna Saved Messages chat check karein.
-                </p>
+    <div id="app" class="w-full max-w-md space-y-6 relative z-10 my-auto">
+        
+        <!-- Header with Small Caps Branding -->
+        <div class="text-center space-y-2">
+            <!-- Bot Name Badge -->
+            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 shadow-inner">
+                <span class="relative flex h-2 w-2">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span class="text-xs font-bold tracking-widest text-indigo-300">
+                    sᴛʀɪɴɢ ғᴀᴛʜᴇʀ ʙᴏᴛ
+                </span>
             </div>
-            <button onclick="closeApp()" class="w-full p-3 bg-slate-700 hover:bg-slate-600 rounded font-bold text-white transition duration-200">
-                Close Mini App
-            </button>
+
+            <!-- Small Caps Title -->
+            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-200 bg-clip-text text-transparent">
+                sᴇssɪᴏɴ ɢᴇɴᴇʀᴀᴛᴏʀ
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-400">ᴅɪʀᴇᴄᴛʟʏ sᴀᴠᴇs sᴇssɪᴏɴ sᴛʀɪɴɢs ɪɴᴛᴏ ʏᴏᴜʀ sᴀᴠᴇᴅ ᴍᴇssᴀɢᴇs</p>
         </div>
+
+        <!-- Main Glass Box -->
+        <div class="glass-card rounded-3xl p-6 sm:p-7 relative overflow-hidden">
+            
+            <!-- Step 1: Initial Credentials -->
+            <div id="step1" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 tracking-wider mb-2">ᴘʀᴏᴛᴏᴄᴏʟ ʟɪʙʀᴀʀʏ</label>
+                    <div class="relative">
+                        <select id="lib_type" class="w-full p-3.5 pl-11 rounded-xl glass-input text-white text-sm outline-none appearance-none cursor-pointer">
+                            <option value="pyrogram">ᴘʏʀᴏɢʀᴀᴍ ᴠ2</option>
+                            <option value="telethon">ᴛᴇʟᴇᴛʜᴏɴ</option>
+                        </select>
+                        <i data-lucide="code-2" class="w-5 h-5 text-slate-400 absolute left-3.5 top-3.5"></i>
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-4 top-4 pointer-events-none"></i>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 tracking-wider mb-2">ᴀᴘɪ ɪᴅ</label>
+                    <div class="relative">
+                        <input id="api_id" type="number" placeholder="e.g. 1234567" class="w-full p-3.5 pl-11 rounded-xl glass-input text-white placeholder-slate-500 text-sm outline-none">
+                        <i data-lucide="hash" class="w-5 h-5 text-slate-400 absolute left-3.5 top-3.5"></i>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 tracking-wider mb-2">ᴀᴘɪ ʜᴀsʜ</label>
+                    <div class="relative">
+                        <input id="api_hash" type="text" placeholder="32-character hash" class="w-full p-3.5 pl-11 rounded-xl glass-input text-white placeholder-slate-500 text-sm outline-none font-mono">
+                        <i data-lucide="key-round" class="w-5 h-5 text-slate-400 absolute left-3.5 top-3.5"></i>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 tracking-wider mb-2">ᴘʜᴏɴᴇ ɴᴜᴍʙᴇʀ</label>
+                    <div class="relative">
+                        <input id="phone" type="text" placeholder="+1234567890" class="w-full p-3.5 pl-11 rounded-xl glass-input text-white placeholder-slate-500 text-sm outline-none">
+                        <i data-lucide="phone" class="w-5 h-5 text-slate-400 absolute left-3.5 top-3.5"></i>
+                    </div>
+                </div>
+
+                <button id="btn-send-otp" onclick="sendOtp()" class="w-full p-4 btn-gradient rounded-xl font-bold text-white flex items-center justify-center gap-2 mt-2">
+                    <span>sᴇɴᴅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴄᴏᴅᴇ</span>
+                    <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <!-- Step 2: OTP Entry -->
+            <div id="step2" class="hidden space-y-5">
+                <div class="text-center space-y-1">
+                    <div class="inline-flex p-3 rounded-2xl bg-indigo-500/10 text-indigo-400 mb-2">
+                        <i data-lucide="mail" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-white">ᴇɴᴛᴇʀ ᴛᴇʟᴇɢʀᴀᴍ ᴏᴛᴘ</h3>
+                    <p class="text-xs text-slate-400">ᴄʜᴇᴄᴋ ᴏғғɪᴄɪᴀʟ ᴛᴇʟᴇɢʀᴀᴍ sʏsᴛᴇᴍ ᴄʜᴀᴛ ғᴏʀ ᴄᴏᴅᴇ</p>
+                </div>
+
+                <div>
+                    <div class="relative">
+                        <input id="otp" type="text" placeholder="e.g. 1 2 3 4 5" class="w-full p-4 rounded-xl glass-input text-white text-center text-xl tracking-[0.3em] font-mono outline-none">
+                    </div>
+                </div>
+
+                <button id="btn-verify-otp" onclick="verifyOtp()" class="w-full p-4 btn-gradient rounded-xl font-bold text-white flex items-center justify-center gap-2">
+                    <span>ᴠᴇʀɪғʏ ᴄᴏᴅᴇ</span>
+                    <i data-lucide="check" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <!-- Step 3: 2FA Password -->
+            <div id="step3" class="hidden space-y-5">
+                <div class="text-center space-y-1">
+                    <div class="inline-flex p-3 rounded-2xl bg-amber-500/10 text-amber-400 mb-2">
+                        <i data-lucide="lock" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-white">ᴛᴡᴏ-sᴛᴇᴘ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ</h3>
+                    <p class="text-xs text-slate-400">ᴄʟᴏᴜᴅ ᴘᴀssᴡᴏʀᴅ ɪs ʀᴇǫᴜɪʀᴇᴅ ᴛᴏ ᴄᴏɴᴛɪɴᴜᴇ</p>
+                </div>
+
+                <div>
+                    <div class="relative">
+                        <input id="password" type="password" placeholder="Cloud Password" class="w-full p-3.5 pl-11 rounded-xl glass-input text-white placeholder-slate-500 text-sm outline-none">
+                        <i data-lucide="lock" class="w-5 h-5 text-slate-400 absolute left-3.5 top-3.5"></i>
+                    </div>
+                </div>
+
+                <button id="btn-verify-2fa" onclick="verify2fa()" class="w-full p-4 btn-gradient rounded-xl font-bold text-white flex items-center justify-center gap-2">
+                    <span>sᴜʙᴍɪᴛ ᴘᴀssᴡᴏʀᴅ</span>
+                    <i data-lucide="shield-alert" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <!-- Step 4: Success Confirmation -->
+            <div id="step4" class="hidden space-y-6 text-center py-2">
+                <div class="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/10">
+                    <i data-lucide="sparkles" class="w-8 h-8"></i>
+                </div>
+                
+                <div class="space-y-2">
+                    <h2 class="text-xl font-bold text-white">sᴇssɪᴏɴ ɢᴇɴᴇʀᴀᴛᴇᴅ!</h2>
+                    <p class="text-xs sm:text-sm text-slate-300 px-2 leading-relaxed">
+                        ʏᴏᴜʀ sᴇssɪᴏɴ sᴛʀɪɴɢ ʜᴀs ʙᴇᴇɴ sᴇɴᴛ ᴛᴏ <span class="text-indigo-400 font-semibold underline underline-offset-4">sᴀᴠᴇᴅ ᴍᴇssᴀɢᴇs</span>.
+                    </p>
+                </div>
+
+                <div class="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 text-[11px] text-slate-400 flex items-center justify-center gap-2">
+                    <i data-lucide="info" class="w-4 h-4 text-slate-500 shrink-0"></i>
+                    <span>ɴᴇᴠᴇʀ sʜᴀʀᴇ ʏᴏᴜʀ sᴇssɪᴏɴ sᴛʀɪɴɢ ᴡɪᴛʜ ᴀɴʏᴏɴᴇ</span>
+                </div>
+
+                <button onclick="closeApp()" class="w-full p-3.5 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 rounded-xl font-semibold text-slate-200 transition duration-150">
+                    ᴄʟᴏsᴇ ᴡɪɴᴅᴏᴡ
+                </button>
+            </div>
+
+        </div>
+
+        <!-- Footer Notice -->
+        <p class="text-center text-[11px] text-slate-500">
+            ᴘᴏᴡᴇʀᴇᴅ ʙʏ ғᴀʟʟᴇɴ ᴀssᴏᴄɪᴀᴛɪᴏɴ &bull; sᴛʀɪɴɢ ғᴀᴛʜᴇʀ ʙᴏᴛ
+        </p>
     </div>
 
     <script>
@@ -73,10 +226,23 @@
         if (tg) {
             tg.ready();
             tg.expand();
+            tg.setHeaderColor('#090d16');
+            tg.setBackgroundColor('#090d16');
         }
+
+        lucide.createIcons();
         let phoneHash = "";
 
-        function notify(msg) {
+        function haptic(type = 'light') {
+            if (tg?.HapticFeedback) {
+                if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
+                else if (type === 'error') tg.HapticFeedback.notificationOccurred('error');
+                else tg.HapticFeedback.impactOccurred(type);
+            }
+        }
+
+        function notify(msg, type = 'error') {
+            haptic(type);
             if (tg && tg.showPopup) {
                 tg.showPopup({ message: msg });
             } else {
@@ -90,13 +256,14 @@
             const phone = document.getElementById('phone').value.trim();
 
             if (!apiId || !apiHash || !phone) {
-                notify("Please fill all fields!");
+                notify("ᴘʟᴇᴀsᴇ ғɪʟʟ ᴀʟʟ ᴅᴇᴛᴀɪʟs!");
                 return;
             }
 
             const btn = document.getElementById('btn-send-otp');
             btn.disabled = true;
-            btn.innerText = "Sending...";
+            btn.innerHTML = `<span class="animate-spin mr-2">◌</span> sᴇɴᴅɪɴɢ...`;
+            haptic('medium');
 
             try {
                 const res = await fetch('/api/send-otp', {
@@ -112,28 +279,31 @@
                 const data = await res.json();
                 if (res.ok) {
                     phoneHash = data.phone_code_hash;
+                    haptic('success');
                     showStep(2);
                 } else {
-                    notify(data.detail || "Failed to send OTP.");
+                    notify(data.detail || "ғᴀɪʟᴇᴅ ᴛᴏ sᴇɴᴅ ᴄᴏᴅᴇ");
                 }
             } catch (err) {
-                notify("Network error: " + err.message);
+                notify("ɴᴇᴛᴡᴏʀᴋ ᴇʀʀᴏʀ: " + err.message);
             } finally {
                 btn.disabled = false;
-                btn.innerText = "Send OTP";
+                btn.innerHTML = `<span>sᴇɴᴅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴄᴏᴅᴇ</span><i data-lucide="arrow-right" class="w-4 h-4"></i>`;
+                lucide.createIcons();
             }
         }
 
         async function verifyOtp() {
             const otpVal = document.getElementById('otp').value.trim().replace(/\s/g, '');
             if (!otpVal) {
-                notify("Please enter the OTP.");
+                notify("ᴘʟᴇᴀsᴇ ᴇɴᴛᴇʀ ᴛʜᴇ ᴏᴛᴘ.");
                 return;
             }
 
             const btn = document.getElementById('btn-verify-otp');
             btn.disabled = true;
-            btn.innerText = "Verifying...";
+            btn.innerHTML = `<span class="animate-spin mr-2">◌</span> ᴠᴇʀɪғʏɪɴɢ...`;
+            haptic('medium');
 
             try {
                 const res = await fetch('/api/verify-otp', {
@@ -147,30 +317,34 @@
                 });
                 const data = await res.json();
                 if (data.status === "2fa_required") {
+                    haptic('medium');
                     showStep(3);
                 } else if (data.status === "success") {
+                    haptic('success');
                     showStep(4);
                 } else {
-                    notify(data.detail || "Verification failed.");
+                    notify(data.detail || "ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ғᴀɪʟᴇᴅ");
                 }
             } catch (err) {
-                notify("Network error: " + err.message);
+                notify("ɴᴇᴛᴡᴏʀᴋ ᴇʀʀᴏʀ: " + err.message);
             } finally {
                 btn.disabled = false;
-                btn.innerText = "Verify OTP";
+                btn.innerHTML = `<span>ᴠᴇʀɪғʏ ᴄᴏᴅᴇ</span><i data-lucide="check" class="w-4 h-4"></i>`;
+                lucide.createIcons();
             }
         }
 
         async function verify2fa() {
             const pwd = document.getElementById('password').value;
             if (!pwd) {
-                notify("Please enter your cloud password.");
+                notify("ᴘʟᴇᴀsᴇ ᴇɴᴛᴇʀ ʏᴏᴜʀ 2ғᴀ ᴘᴀssᴡᴏʀᴅ.");
                 return;
             }
 
             const btn = document.getElementById('btn-verify-2fa');
             btn.disabled = true;
-            btn.innerText = "Submitting...";
+            btn.innerHTML = `<span class="animate-spin mr-2">◌</span> ᴀᴜᴛʜᴇɴᴛɪᴄᴀᴛɪɴɢ...`;
+            haptic('medium');
 
             try {
                 const res = await fetch('/api/verify-2fa', {
@@ -183,24 +357,28 @@
                 });
                 const data = await res.json();
                 if (data.status === "success") {
+                    haptic('success');
                     showStep(4);
                 } else {
-                    notify(data.detail || "Invalid password.");
+                    notify(data.detail || "ɪɴᴠᴀʟɪᴅ 2ғᴀ ᴘᴀssᴡᴏʀᴅ");
                 }
             } catch (err) {
-                notify("Network error: " + err.message);
+                notify("ɴᴇᴛᴡᴏʀᴋ ᴇʀʀᴏʀ: " + err.message);
             } finally {
                 btn.disabled = false;
-                btn.innerText = "Submit Password";
+                btn.innerHTML = `<span>sᴜʙᴍɪᴛ ᴘᴀssᴡᴏʀᴅ</span><i data-lucide="shield-alert" class="w-4 h-4"></i>`;
+                lucide.createIcons();
             }
         }
 
         function showStep(s) {
             [1, 2, 3, 4].forEach(i => document.getElementById(`step${i}`).classList.add('hidden'));
             document.getElementById(`step${s}`).classList.remove('hidden');
+            lucide.createIcons();
         }
 
         function closeApp() {
+            haptic('light');
             if (tg && tg.close) {
                 tg.close();
             } else {
