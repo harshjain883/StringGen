@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="[link removed]"></script>
+    <title>String Gen Mini App</title>
+    <style>
+        body { background-color: var(--tg-theme-bg-color, #0f172a); color: var(--tg-theme-text-color, #f8fafc); }
+        .btn-primary { background-color: var(--tg-theme-button-color, #3b82f6); color: var(--tg-theme-button-text-color, #ffffff); }
+    </style>
+</head>
+<body class="p-6 font-sans">
+    <div id="app" class="max-w-md mx-auto space-y-6">
+        <h1 class="text-2xl font-bold text-center">Session Generator</h1>
+
+        <!-- Step 1: Init -->
+        <div id="step1" class="space-y-4">
+            <select id="lib_type" class="w-full p-3 rounded bg-slate-800 border border-slate-700">
+                <option value="pyrogram">Pyrogram v2</option>
+                <option value="telethon">Telethon</option>
+            </select>
+            <input id="api_id" type="number" placeholder="API ID" class="w-full p-3 rounded bg-slate-800 border border-slate-700">
+            <input id="api_hash" type="text" placeholder="API HASH" class="w-full p-3 rounded bg-slate-800 border border-slate-700">
+            <input id="phone" type="text" placeholder="+123456789" class="w-full p-3 rounded bg-slate-800 border border-slate-700">
+            <button onclick="sendOtp()" class="w-full p-3 btn-primary rounded font-bold">Send OTP</button>
+        </div>
+
+        <!-- Step 2: OTP -->
+        <div id="step2" class="hidden space-y-4">
+            <p class="text-sm text-slate-400">Enter code sent to Telegram</p>
+            <input id="otp" type="text" placeholder="OTP (e.g. 1 2 3 4 5)" class="w-full p-3 rounded bg-slate-800 border border-slate-700">
+            <button onclick="verifyOtp()" class="w-full p-3 btn-primary rounded font-bold">Verify OTP</button>
+        </div>
+
+        <!-- Step 3: 2FA -->
+        <div id="step3" class="hidden space-y-4">
+            <p class="text-sm text-amber-400">Two-Step Verification Required</p>
+            <input id="password" type="password" placeholder="Cloud Password" class="w-full p-3 rounded bg-slate-800 border border-slate-700">
+            <button onclick="verify2fa()" class="w-full p-3 btn-primary rounded font-bold">Submit Password</button>
+        </div>
+
+        <!-- Step 4: Result -->
+        <div id="step4" class="hidden space-y-4">
+            <textarea id="result" readonly class="w-full h-48 p-3 rounded bg-slate-900 border border-slate-700 text-xs font-mono"></textarea>
+            <button onclick="copySession()" class="w-full p-3 bg-green-600 rounded font-bold">Copy Session</button>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        let phoneHash = "";
+
+        async function sendOtp() {
+            const res = await fetch('/api/send-otp', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    lib_type: document.getElementById('lib_type').value,
+                    api_id: parseInt(document.getElementById('api_id').value),
+                    api_hash: document.getElementById('api_hash').value,
+                    phone_number: document.getElementById('phone').value
+                })
+            });
+            const data = await res.json();
+            if(res.ok) {
+                phoneHash = data.phone_code_hash;
+                showStep(2);
+            } else { alert(data.detail); }
+        }
+
+        async function verifyOtp() {
+            const res = await fetch('/api/verify-otp', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    phone_number: document.getElementById('phone').value,
+                    otp: document.getElementById('otp').value.replace(/\s/g, ''),
+                    phone_code_hash: phoneHash
+                })
+            });
+            const data = await res.json();
+            if(data.status === "2fa_required") showStep(3);
+            else if(data.status === "success") finish(data.session);
+            else alert(data.detail);
+        }
+
+        async function verify2fa() {
+            const res = await fetch('/api/verify-2fa', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    phone_number: document.getElementById('phone').value,
+                    password: document.getElementById('password').value
+                })
+            });
+            const data = await res.json();
+            if(data.status === "success") finish(data.session);
+            else alert(data.detail);
+        }
+
+        function showStep(s) {
+            [1,2,3,4].forEach(i => document.getElementById(`step${i}`).classList.add('hidden'));
+            document.getElementById(`step${s}`).classList.remove('hidden');
+        }
+
+        function finish(session) {
+            document.getElementById('result').value = session;
+            showStep(4);
+        }
+
+        function copySession() {
+            const copyText = document.getElementById("result");
+            copyText.select();
+            document.execCommand("copy");
+            tg.showPopup({message: "Session copied to clipboard!"});
+        }
+    </script>
+</body>
+</html>
