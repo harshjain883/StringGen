@@ -1,5 +1,10 @@
+fastapi
+uvicorn
+python-multipart
+jinja2
+# Existing dependencies
 kurigram>=2.2.25
+telethon~=1.44.0
 pymongo~=4.17.0
 python-dotenv~=1.2.3
-telethon~=1.44.0
-pytgcrypto~=1.2.12
+
