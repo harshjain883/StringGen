@@ -1,25 +1,34 @@
-from pyrogram import filters, types
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 import os
+from pyrogram import filters, types
+from pyrogram.types import InlineKeyboardButton, WebAppInfo
 
 from anony import app, buttons, db
 
+# Railway URL set as default
+DEFAULT_WEBAPP_URL = "https://stringgen-production.up.railway.app"
+
+
 @app.on_message(filters.command(["start"]) & filters.private)
 async def f_start(_, m: types.Message):
-    # The URL should point to your hosted domain. 
-    # For many cloud providers, the URL is provided via environment variables.
-    webapp_url = os.environ.get("WEBAPP_URL", "[link removed]")
+    # Fetch from env if provided, else use the Railway public URL
+    webapp_url = os.environ.get("WEBAPP_URL", DEFAULT_WEBAPP_URL).strip()
 
-    # We extend the existing start_key with the Mini App launcher
+    # Ensure https protocol prefix exists
+    if not webapp_url.startswith("https://"):
+        webapp_url = f"https://{webapp_url.replace('http://', '')}"
+
     keyboard = buttons.start_key()
-    
-    # Adding the Web App button at the top of the existing keyboard
-    keyboard.inline_keyboard.insert(0, [
-        InlineKeyboardButton(
-            text="🚀 Open String Gen Mini App",
-            web_app=WebAppInfo(url=webapp_url)
-        )
-    ])
+
+    # Add Mini App launch button at the top
+    keyboard.inline_keyboard.insert(
+        0,
+        [
+            InlineKeyboardButton(
+                text="🚀 Open String Gen Mini App",
+                web_app=WebAppInfo(url=webapp_url),
+            )
+        ],
+    )
 
     await m.reply_text(
         text=(
@@ -30,5 +39,5 @@ async def f_start(_, m: types.Message):
         ),
         reply_markup=keyboard,
     )
-    
+
     await db.add_user(m.from_user.id)
